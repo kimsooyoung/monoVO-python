@@ -40,7 +40,7 @@ class PinholeCamera:
 
 
 class VisualOdometry:
-    def __init__(self, cam, annotations):
+    def __init__(self, cam, ground_truth):
         self.frame_stage = 0
         self.cam = cam
         self.new_frame = None
@@ -51,22 +51,21 @@ class VisualOdometry:
         self.px_cur = None
         self.focal = cam.fx
         self.pp = (cam.cx, cam.cy)
+        self.groundtruth = ground_truth
         self.trueX, self.trueY, self.trueZ = 0, 0, 0
         self.detector = cv2.FastFeatureDetector_create(
             threshold=25, nonmaxSuppression=True
         )
-        with open(annotations) as f:
-            self.annotations = f.readlines()
 
     def getAbsoluteScale(self, frame_id):  # specialized for KITTI odometry dataset
-        ss = self.annotations[frame_id - 1].strip().split()
-        x_prev = float(ss[3])
-        y_prev = float(ss[7])
-        z_prev = float(ss[11])
-        ss = self.annotations[frame_id].strip().split()
-        x = float(ss[3])
-        y = float(ss[7])
-        z = float(ss[11])
+        ss = self.groundtruth[frame_id - 1]
+        x_prev = float(ss[0])
+        y_prev = float(ss[1])
+        z_prev = float(ss[2])
+        ss = self.groundtruth[frame_id]
+        x = float(ss[0])
+        y = float(ss[1])
+        z = float(ss[2])
         self.trueX, self.trueY, self.trueZ = x, y, z
         return np.sqrt(
             (x - x_prev) * (x - x_prev)
