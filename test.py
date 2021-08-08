@@ -14,7 +14,7 @@ basedir = "/home/swimming/Documents/Dataset"
 
 # Specify the dataset to load
 date = "2011_09_30"
-drive = "0033"
+drive = "0034"
 
 # Load the data. Optionally, specify the frame range to load.
 # dataset = pykitti.raw(basedir, date, drive)
@@ -34,11 +34,20 @@ dataset = pykitti.raw(basedir, date, drive, frames=range(0, 20, 5))
 
 # Grab some data
 second_pose = dataset.oxts[1].T_w_imu
+cam_to_velo = dataset.calib.T_cam0_velo
+velo_to_cam = np.linalg.inv(cam_to_velo)
+
+print(cam_to_velo)
+print(velo_to_cam)
+print(np.matmul(cam_to_velo, velo_to_cam))
+
+print()
+print('+++++++++')
 first_gray = next(iter(dataset.gray))
 first_cam1 = next(iter(dataset.cam1))
 first_rgb = dataset.get_rgb(0)
 first_cam2 = dataset.get_cam2(0)
-third_velo = dataset.get_velo(2)
+# third_velo = dataset.get_velo(2)
 
 # Display some of the data
 np.set_printoptions(precision=4, suppress=True)
@@ -66,15 +75,15 @@ ax[1, 1].imshow(first_rgb[1])
 ax[1, 1].set_title('Right RGB Image (cam3)')
 
 
-f2 = plt.figure()
-ax2 = f2.add_subplot(111, projection='3d')
-# Plot every 100th point so things don't get too bogged down
-velo_range = range(0, third_velo.shape[0], 100)
-ax2.scatter(third_velo[velo_range, 0],
-            third_velo[velo_range, 1],
-            third_velo[velo_range, 2],
-            c=third_velo[velo_range, 3],
-            cmap='gray')
-ax2.set_title('Third Velodyne scan (subsampled)')
+# f2 = plt.figure()
+# ax2 = f2.add_subplot(111, projection='3d')
+# # Plot every 100th point so things don't get too bogged down
+# velo_range = range(0, third_velo.shape[0], 100)
+# ax2.scatter(third_velo[velo_range, 0],
+#             third_velo[velo_range, 1],
+#             third_velo[velo_range, 2],
+#             c=third_velo[velo_range, 3],
+#             cmap='gray')
+# ax2.set_title('Third Velodyne scan (subsampled)')
 
 plt.show()
