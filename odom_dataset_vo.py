@@ -36,7 +36,7 @@ img_id = 0
 
 try:
     while True:
-        
+
         PIL_Image = dataset.get_cam0(img_id)
         color_img = cv2.cvtColor(np.asarray(PIL_Image), cv2.COLOR_RGB2BGR)
         gray_img = cv2.cvtColor(color_img, cv2.COLOR_RGB2GRAY)
@@ -60,7 +60,9 @@ try:
         # cv2.rectangle(img, start, end, color, thickness)
         cv2.rectangle(traj, (10, 20), (600, 60), (0, 0, 0), -1)
         text = "Coordinates: x=%2fm y=%2fm z=%2fm" % (x, y, z)
-        cv2.putText(traj, text, (20, 40), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, 8)
+        cv2.putText(
+            traj, text, (20, 40), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, 8
+        )
 
         cv2.imshow("Road facing camera", gray_img)
         cv2.imshow("Trajectory", traj)

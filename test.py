@@ -1,89 +1,88 @@
-"""Example of pykitti.raw usage."""
-import itertools
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-
 import pykitti
+import cv2
 
-__author__ = "Lee Clement"
-__email__ = "lee.clement@robotics.utias.utoronto.ca"
+from geo_transforms import lla_to_enu
+from visual_odometry import PinholeCamera, VisualOdometry
 
-# Change this to the directory where you store KITTI data
-basedir = "/home/swimming/Documents/Dataset"
+kitti_root_dir = "/home/kimsooyoung/Documents/AI_KR"
+# kitti_root_dir = "/home/swimming/Documents/Dataset"
+kitti_date = "2011_09_30"
+kitti_drive = "0033"
 
-# Specify the dataset to load
-date = "2011_09_30"
-drive = "0034"
+dataset = pykitti.raw(kitti_root_dir, kitti_date, kitti_drive)
+myCam = dataset.get_cam0(0)
 
-# Load the data. Optionally, specify the frame range to load.
-# dataset = pykitti.raw(basedir, date, drive)
-dataset = pykitti.raw(basedir, date, drive, frames=range(0, 20, 5))
+width = myCam.width
+height = myCam.height
 
-# dataset.calib:         Calibration data are accessible as a named tuple
-# dataset.timestamps:    Timestamps are parsed into a list of datetime objects
-# dataset.oxts:          List of OXTS packets and 6-dof poses as named tuples
-# dataset.camN:          Returns a generator that loads individual images from camera N
-# dataset.get_camN(idx): Returns the image from camera N at idx
-# dataset.gray:          Returns a generator that loads monochrome stereo pairs (cam0, cam1)
-# dataset.get_gray(idx): Returns the monochrome stereo pair at idx
-# dataset.rgb:           Returns a generator that loads RGB stereo pairs (cam2, cam3)
-# dataset.get_rgb(idx):  Returns the RGB stereo pair at idx
-# dataset.velo:          Returns a generator that loads velodyne scans as [x,y,z,reflectance]
-# dataset.get_velo(idx): Returns the velodyne scan at idx
+fx = dataset.calib.K_cam0[0][0]
+fy = dataset.calib.K_cam0[1][1]
+cx = dataset.calib.K_cam0[0][2]
+cy = dataset.calib.K_cam0[1][2]
 
-# Grab some data
-second_pose = dataset.oxts[1].T_w_imu
-cam_to_velo = dataset.calib.T_cam0_velo
-velo_to_cam = np.linalg.inv(cam_to_velo)
+cam = PinholeCamera(width, height, fx, fy, cx, cy)
 
-print(cam_to_velo)
-print(velo_to_cam)
-print(np.matmul(cam_to_velo, velo_to_cam))
+gt_trajectory_imu = np.array(
+    [
+        [
+            oxts_data.T_w_imu[0][3],
+            oxts_data.T_w_imu[1][3],
+            oxts_data.T_w_imu[2][3],
+            1,
+        ]
+        for oxts_data in dataset.oxts
+    ]
+)
 
-print()
-print('+++++++++')
-first_gray = next(iter(dataset.gray))
-first_cam1 = next(iter(dataset.cam1))
-first_rgb = dataset.get_rgb(0)
-first_cam2 = dataset.get_cam2(0)
-# third_velo = dataset.get_velo(2)
+# dataset.calib.T_cam0_velo
+# @ np.linalg.inv(dataset.oxts[i].T_w_imu) @
 
-# Display some of the data
-np.set_printoptions(precision=4, suppress=True)
-print('\nDrive: ' + str(dataset.drive))
-print('\nFrame range: ' + str(dataset.frames))
+cam0_xyz = np.array(
+    [dataset.calib.T_cam0_imu @ gt_trajectory_imu[i] for i in range(len(dataset))]
+)
 
-print('\nIMU-to-Velodyne transformation:\n' + str(dataset.calib.T_velo_imu))
-print('\nGray stereo pair baseline [m]: ' + str(dataset.calib.b_gray))
-print('\nRGB stereo pair baseline [m]: ' + str(dataset.calib.b_rgb))
+gt_trajectory_lla = np.array(
+    [
+        [oxts_data.packet.lon, oxts_data.packet.lat, oxts_data.packet.alt]
+        for oxts_data in dataset.oxts
+    ]
+)
 
-print('\nFirst timestamp: ' + str(dataset.timestamps[0]))
-print('\nSecond IMU pose:\n' + str(second_pose))
+gt_trajectory_lla = gt_trajectory_lla.T
+origin = gt_trajectory_lla[:, 0]  # set the initial position to the origin
+gt_trajectory_xyz = lla_to_enu(gt_trajectory_lla, origin).T
 
-f, ax = plt.subplots(2, 2, figsize=(15, 5))
-ax[0, 0].imshow(first_gray[0], cmap='gray')
-ax[0, 0].set_title('Left Gray Image (cam0)')
+### test ###
 
-ax[0, 1].imshow(first_cam1, cmap='gray')
-ax[0, 1].set_title('Right Gray Image (cam1)')
-
-ax[1, 0].imshow(first_cam2)
-ax[1, 0].set_title('Left RGB Image (cam2)')
-
-ax[1, 1].imshow(first_rgb[1])
-ax[1, 1].set_title('Right RGB Image (cam3)')
+print(f"cam0_xyz : {cam0_xyz.shape}")
+print(f"gt_trajectory_xyz : {gt_trajectory_xyz.shape}")
+xs, ys, zs = gt_trajectory_xyz.T
+ix, iy, iz, _ = gt_trajectory_imu.T
+cam_x, cam_y, cam_z, _ = cam0_xyz.T
 
 
-# f2 = plt.figure()
-# ax2 = f2.add_subplot(111, projection='3d')
-# # Plot every 100th point so things don't get too bogged down
-# velo_range = range(0, third_velo.shape[0], 100)
-# ax2.scatter(third_velo[velo_range, 0],
-#             third_velo[velo_range, 1],
-#             third_velo[velo_range, 2],
-#             c=third_velo[velo_range, 3],
-#             cmap='gray')
-# ax2.set_title('Third Velodyne scan (subsampled)')
+# fig, ax = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1, 1]}, figsize=(10, 12))
+fig, ax = plt.subplots(1, 1, figsize=(15, 15))
+ax.plot(xs, ys, lw=2, label="ground-truth trajectory")
+ax.plot(ix, iy, lw=2, label="imu traj")
+
+ax.set_xlabel("X [m]")
+ax.set_ylabel("Y [m]")
+ax.grid()
+
+plt.show()
+
+fig2 = plt.figure(figsize=(15, 15))
+ax2 = plt.axes(projection="3d")
+ax2.scatter3D(xs, ys, zs, color="green")
+ax2.scatter3D(ix, iy, iz, color="red")
+
+plt.show()
+
+fig2 = plt.figure(figsize=(15, 15))
+ax2 = plt.axes(projection="3d")
+ax2.scatter3D(cam_x, cam_y, cam_z, color="green")
 
 plt.show()
