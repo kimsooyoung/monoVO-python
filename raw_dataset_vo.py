@@ -5,8 +5,8 @@ import cv2
 from geo_transforms import lla_to_enu
 from visual_odometry import PinholeCamera, VisualOdometry
 
-kitti_root_dir = "/home/kimsooyoung/Documents/AI_KR"
-# kitti_root_dir = "/home/swimming/Documents/Dataset"
+# kitti_root_dir = "/home/kimsooyoung/Documents/AI_KR"
+kitti_root_dir = "/home/swimming/Documents/Dataset"
 kitti_date = "2011_09_30"
 kitti_drive = "0033"
 
@@ -39,12 +39,35 @@ cam0_xyz = np.array(
     [dataset.calib.T_cam0_imu @ gt_trajectory_imu[i] for i in range(len(dataset))]
 )
 
-vo = VisualOdometry(cam, ground_truth=cam0_xyz)
-traj = np.zeros((600, 600, 3), dtype=np.uint8)
+calib_matrix = np.linalg.inv(dataset.calib.T_cam0_imu @ dataset.oxts[0].T_w_imu)
+new_pose_mat_list = [ calib_matrix @ dataset.calib.T_cam0_imu @ oxts.T_w_imu for oxts in dataset.oxts ]
+
+new_gt_traj = np.array(
+    [
+        [oxts_data[0,3], oxts_data[1,3], oxts_data[2,3]]
+        for oxts_data in new_pose_mat_list
+    ]
+)
+
+initial_pose_mat = dataset.calib.T_cam0_imu @ dataset.oxts[0].T_w_imu
+
+vo = VisualOdometry(cam, ground_truth=new_gt_traj)
+traj = np.zeros((1000, 1000, 3), dtype=np.uint8)
 img_id = 0
 
+# vo.setInitialPose(initial_pose_mat)
+
+cnt = 0
 try:
     while True:
+        print(img_id)
+
+        # cnt += 1
+        # if cnt > 2:
+        #     break
+
+        print("new_pose_mat_list")
+        print(new_pose_mat_list[img_id])
 
         PIL_Image = dataset.get_cam0(img_id)
         color_img = cv2.cvtColor(np.asarray(PIL_Image), cv2.COLOR_RGB2BGR)
@@ -53,16 +76,19 @@ try:
         vo.update(gray_img, img_id)
 
         cur_t = vo.cur_t
-        if img_id > 2:
+        if img_id > 1:
             x, y, z = cur_t[0], cur_t[1], cur_t[2]
         else:
             x, y, z = 0.0, 0.0, 0.0
+        print(f"update {x} {z} {vo.trueX} {vo.trueZ}")
+
         draw_x, draw_y = int(x) + 290, int(z) + 90
         true_x, true_y = int(vo.trueX) + 290, int(vo.trueZ) + 90
 
         img_id += 1
 
         # cv2.circle(img, center, radian, color, thickness)
+        # BGR Color
         cv2.circle(traj, (draw_x, draw_y), 1, (0, 255, 0), 1)
         cv2.circle(traj, (true_x, true_y), 1, (0, 0, 255), 1)
         # cv2.rectangle(img, start, end, color, thickness)

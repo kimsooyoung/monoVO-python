@@ -6,8 +6,8 @@ import cv2
 from geo_transforms import lla_to_enu
 from visual_odometry import PinholeCamera, VisualOdometry
 
-kitti_root_dir = "/home/kimsooyoung/Documents/AI_KR"
-# kitti_root_dir = "/home/swimming/Documents/Dataset"
+# kitti_root_dir = "/home/kimsooyoung/Documents/AI_KR"
+kitti_root_dir = "/home/swimming/Documents/Dataset"
 kitti_date = "2011_09_30"
 kitti_drive = "0033"
 

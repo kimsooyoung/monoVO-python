@@ -42,8 +42,8 @@ class PinholeCamera:
 class VisualOdometry:
     def __init__(self, cam, ground_truth):
         self.frame_stage = 0
-        self.cam = cam
         self.new_frame = None
+        self.cam = cam
         self.last_frame = None
         self.cur_R = None
         self.cur_t = None
@@ -56,6 +56,18 @@ class VisualOdometry:
         self.detector = cv2.FastFeatureDetector_create(
             threshold=25, nonmaxSuppression=True
         )
+
+    def setInitialPose(self, initialPose):
+        self.cur_R = initialPose[:3,:3]
+        a = []
+        for i in range(3):
+            temp = [initialPose[i,3]]
+            a.append(temp)
+        print("++++++++")
+        self.cur_t = np.array(a)
+        print(initialPose)
+        print(self.cur_R)
+        print(self.cur_t)
 
     def getAbsoluteScale(self, frame_id):  # specialized for KITTI odometry dataset
         ss = self.groundtruth[frame_id - 1]
@@ -96,6 +108,9 @@ class VisualOdometry:
         )
         self.frame_stage = STAGE_DEFAULT_FRAME
         self.px_ref = self.px_cur
+        print('processSecondFrame')
+        print(f"cur_R {self.cur_R}, {type(self.cur_R)}")
+        print(f"cur_t {self.cur_t}")
 
     def processFrame(self, frame_id):
         self.px_ref, self.px_cur = featureTracking(
@@ -114,6 +129,9 @@ class VisualOdometry:
             E, self.px_cur, self.px_ref, focal=self.focal, pp=self.pp
         )
         absolute_scale = self.getAbsoluteScale(frame_id)
+        print("processFrame")
+        print(f"cur_R {self.cur_R}, {type(self.cur_R)}")
+        print(f"cur_t {self.cur_t}")
         if absolute_scale > 0.1:
             self.cur_t = self.cur_t + absolute_scale * self.cur_R.dot(t)
             self.cur_R = R.dot(self.cur_R)
