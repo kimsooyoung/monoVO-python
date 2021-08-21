@@ -4,8 +4,9 @@ import cv2
 
 from visual_odometry import PinholeCamera, VisualOdometry
 
-kitti_odom_dir = "/home/swimming/Documents/Dataset/dataset"
-kitti_odom_sequence = "05"
+# kitti_odom_dir = "/home/swimming/Documents/Dataset/dataset"
+kitti_odom_dir = "/home/kimsooyoung/Documents/AI_KR/dataset"
+kitti_odom_sequence = "00"
 
 dataset = pykitti.odometry(kitti_odom_dir, kitti_odom_sequence)
 myCam = dataset.get_cam0(0)
